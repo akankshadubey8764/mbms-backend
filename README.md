@@ -32,25 +32,4 @@ mbms-BE/
 ├── server.js           # Entry point (Fastify instance)
 └── .env                # Secrets (not pushed to GitHub)
 
-**Getting Started Locally**
-Prerequisites
-Node.js installed
 
-A MongoDB Atlas account or local MongoDB instance
-
-1. Clone the repository
-git clone https://github.com/akankshadubey8764/mbms-backend.git
-
-2. Install dependencies
-npm install
-
-3. Setup Environment Variables
-Create a .env file in the root folder and add:
-
-Code snippet
-
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_random_secret_key
-PORT=5000
-4. Run the server
-npm run dev # Starts with nodemon npm start # Starts with node
