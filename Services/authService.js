@@ -1,55 +1,23 @@
 const User = require('../mbmsModels/User');
-const Student = require('../mbmsModels/Student');
-const bcrypt = require('bcryptjs');
 
-class AuthService {
+// Standard CRUD operations
+const add = async objToSave => new User(objToSave).save();
 
-    async register(userData) {
-        const { email, password, username, role } = userData;
+const get = async (criteria, projection, options, populate = '') =>
+    User.find(criteria, projection, options).populate(populate).lean();
 
-        // Check if user exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            throw new Error('User already exists');
-        }
+const getOne = async (criteria, projection, options, populate = '') =>
+    User.findOne(criteria, projection, options).populate(populate).lean();
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+const updateOne = async (criteria, dataToSet, options) =>
+    User.findOneAndUpdate(criteria, dataToSet, options).lean();
 
-        // Create user
-        const user = new User({
-            email,
-            password: hashedPassword,
-            username,
-            role: role || 'student'
-        });
+const count = async (criteria) => User.countDocuments(criteria);
 
-        return await user.save();
-    }
-
-    async login(email, password) {
-        const user = await User.findOne({ email });
-        if (!user) {
-            throw new Error('This User is not registered with us. Please Register before Signin');
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            throw new Error('Invalid credentials');
-        }
-
-        // Business Rule: Students must be approved to log in
-        if (user.role === 'student') {
-            const student = await Student.findOne({ user: user._id });
-            if (!student || !student.isApproved) {
-                // Return generic error for security
-                throw new Error('Invalid credentials');
-            }
-        }
-
-        return user;
-    }
-}
-
-module.exports = new AuthService();
-
+module.exports = {
+    add,
+    get,
+    getOne,
+    updateOne,
+    count
+};

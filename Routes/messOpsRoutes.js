@@ -2,101 +2,78 @@ const messOpsController = require('../Controllers/messOpsController');
 const S = require('fluent-json-schema');
 
 async function messOpsRoutes(fastify, options) {
-    fastify.addHook('preHandler', fastify.authenticate);
-
-    // Menu routes
+    // 12. View Mess Menu API (All authenticated users)
     fastify.route({
         method: 'GET',
-        url: '/menu',
-        async handler(request, reply) {
-            return messOpsController.getMenu(request, reply);
-        }
+        url: '/get_mess_menu',
+        preHandler: [fastify.authenticate],
+        handler: messOpsController.getMenu
     });
 
-    fastify.route({
-        method: 'POST',
-        url: '/menu',
-        preHandler: [fastify.authorize(['admin', 'warden1', 'warden2'])],
-        schema: {
-            body: S.object()
-                .prop('day', S.string().required())
-                .prop('mealTime', S.string().enum(['Breakfast', 'Lunch', 'Dinner']).required())
-                .prop('items', S.array().items(S.string()).required())
-        },
-        async handler(request, reply) {
-            return messOpsController.addMenu(request, reply);
-        }
-    });
-
+    // 13. Update Mess Menu API (Admin or Mess Manager)
     fastify.route({
         method: 'PUT',
-        url: '/menu/:id',
-        preHandler: [fastify.authorize(['admin', 'warden1', 'warden2'])],
+        url: '/update_mess_menu',
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
         schema: {
-            params: S.object().prop('id', S.string().required()),
             body: S.object()
-                .prop('items', S.array().items(S.string()))
+                .prop('week', S.string().required())
+                .prop('menuItems', S.array().items(
+                    S.object()
+                        .prop('day', S.string().required())
+                        .prop('mealTime', S.string().enum(['Breakfast', 'Lunch', 'Dinner']).required())
+                        .prop('items', S.array().items(S.string()).required())
+                ).required())
         },
-        async handler(request, reply) {
-            return messOpsController.updateMenu(request, reply);
-        }
+        handler: messOpsController.updateMenu
     });
 
-    fastify.route({
-        method: 'DELETE',
-        url: '/menu/:id',
-        preHandler: [fastify.authorize(['admin', 'warden1', 'warden2'])],
-        schema: {
-            params: S.object().prop('id', S.string().required())
-        },
-        async handler(request, reply) {
-            return messOpsController.deleteMenu(request, reply);
-        }
-    });
-
-    // Query routes
+    // 22. Add Grocery Purchase API (Mess Manager)
     fastify.route({
         method: 'POST',
-        url: '/query',
+        url: '/add_grocery_purchase',
+        preHandler: [fastify.authenticate, fastify.authorize(['mess_manager'])],
         schema: {
             body: S.object()
-                .prop('area', S.string().required())
-                .prop('text', S.string().required())
+                .prop('itemName', S.string().required())
+                .prop('quantity', S.number().required())
+                .prop('rate', S.number().required())
+                .prop('seller', S.string().required())
+                .prop('unit', S.string().default('kg'))
         },
-        async handler(request, reply) {
-            return messOpsController.submitQuery(request, reply);
-        }
+        handler: messOpsController.addGroceryPurchase
     });
 
+    // 23. View Grocery Purchase History API (Admin/Manager)
     fastify.route({
         method: 'GET',
-        url: '/query/my',
-        async handler(request, reply) {
-            return messOpsController.getMyQueries(request, reply);
-        }
+        url: '/grocery',
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
+        handler: messOpsController.getGroceryHistory
     });
 
-    fastify.route({
-        method: 'GET',
-        url: '/query',
-        preHandler: [fastify.authorize(['admin', 'warden1', 'warden2'])],
-        async handler(request, reply) {
-            return messOpsController.getAllQueries(request, reply);
-        }
-    });
-
+    // 24. Update Issued Stock API (Mess Manager)
     fastify.route({
         method: 'PATCH',
-        url: '/query/:id/resolve',
-        preHandler: [fastify.authorize(['admin', 'warden1', 'warden2'])],
+        url: '/stock/issue',
+        preHandler: [fastify.authenticate, fastify.authorize(['mess_manager'])],
         schema: {
-            params: S.object().prop('id', S.string().required())
+            body: S.object()
+                .prop('itemId', S.string().required())
+                .prop('issuedQty', S.number().required())
         },
-        async handler(request, reply) {
-            return messOpsController.resolveQuery(request, reply);
-        }
+        handler: messOpsController.issueStock
+    });
+
+    // 26. Upload Grocery Invoice API (Mess Manager)
+    fastify.route({
+        method: 'POST',
+        url: '/grocery/upload-invoice',
+        preHandler: [fastify.authenticate, fastify.authorize(['mess_manager'])],
+        handler: messOpsController.uploadGroceryInvoice
     });
 }
 
 module.exports = messOpsRoutes;
+
 

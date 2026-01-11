@@ -1,15 +1,18 @@
 const studentController = require('../Controllers/studentController');
 const S = require('fluent-json-schema');
 
+const emailRegex = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+
 async function studentRoutes(fastify, options) {
-    // Public registration
+    // 5. Registration API
     fastify.route({
         method: 'POST',
         url: '/register',
         schema: {
             body: S.object()
-                .prop('email', S.string().format(S.FORMAT.EMAIL).required())
+                .prop('email', S.string().pattern(emailRegex).required())
                 .prop('password', S.string().minLength(6).required())
+                .prop('username', S.string().required())
                 .prop('firstname', S.string().required())
                 .prop('lastname', S.string().required())
                 .prop('regnumber', S.string().required())
@@ -17,69 +20,54 @@ async function studentRoutes(fastify, options) {
                 .prop('year', S.string().required())
                 .prop('roomno', S.number().required())
                 .prop('block', S.string().required())
+                .prop('phnnum', S.string().required())
+                .prop('role', S.string().default('student'))
+                .prop('photo', S.string())
         },
-        async handler(request, reply) {
-            return studentController.register(request, reply);
-        }
+        handler: studentController.register
     });
 
-    // Protected routes: Profile Management
+    // 11. View User Profile API
     fastify.route({
         method: 'GET',
         url: '/profile',
         preHandler: [fastify.authenticate],
-        async handler(request, reply) {
-            return studentController.getMyProfile(request, reply);
-        }
+        handler: studentController.getMyProfile
     });
 
-    fastify.route({
-        method: 'PUT',
-        url: '/profile',
-        preHandler: [fastify.authenticate],
-        schema: {
-            body: S.object()
-                .prop('firstname', S.string())
-                .prop('lastname', S.string())
-                .prop('department', S.string())
-                .prop('year', S.string())
-        },
-        async handler(request, reply) {
-            return studentController.updateMyProfile(request, reply);
-        }
-    });
-
-    // Admin/Warden only routes
+    // 18. View Personal Mess Bill API (Most recent)
     fastify.route({
         method: 'GET',
-        url: '/requests',
-        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'warden1', 'warden2'])],
-        async handler(request, reply) {
-            return studentController.getRequests(request, reply);
-        }
-    });
-
-    fastify.route({
-        method: 'PATCH',
-        url: '/approve/:id',
-        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'warden1', 'warden2'])],
+        url: '/mess-bills',
+        // 1. ADD THIS SCHEMA BLOCK
         schema: {
-            params: S.object().prop('id', S.string().required())
+            tags: ['Student'],
+            description: 'Get the latest mess bill for the logged-in student',
+            // This line tells Swagger to show the lock icon and Authorization input
+            security: [{ bearerAuth: [] }] 
         },
-        async handler(request, reply) {
-            return studentController.approve(request, reply);
-        }
+        // 2. KEEP YOUR EXISTING AUTH LOGIC
+        preHandler: [fastify.authenticate, fastify.authorize(['student'])],
+        handler: studentController.getLatestMessBill
     });
 
+    // 19. View Mess Bill History API
     fastify.route({
         method: 'GET',
-        url: '/',
-        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'warden1', 'warden2'])],
-        async handler(request, reply) {
-            return studentController.getAll(request, reply);
-        }
+        url: '/mess-bills/history',
+        preHandler: [fastify.authenticate, fastify.authorize(['student'])],
+        handler: studentController.getMessBillHistory
+    });
+
+    // 20. Upload Payment Receipt API
+    fastify.route({
+        method: 'POST',
+        url: '/bills/upload-proof',
+        preHandler: [fastify.authenticate, fastify.authorize(['student'])],
+        handler: studentController.uploadPaymentProof
     });
 }
 
 module.exports = studentRoutes;
+
 

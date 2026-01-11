@@ -7,11 +7,42 @@ fastify.register(require('@fastify/cors'), { origin: '*' });
 fastify.register(require('./plugins/db'));
 fastify.register(require('./plugins/auth'));
 
+// --- SWAGGER INTEGRATION START ---
+
+// 1. Register Swagger Generator
+fastify.register(require('@fastify/swagger'), {
+  openapi: {
+    info: {
+      title: 'MBMS API Documentation',
+      description: 'Hostel Mess Management System Backend',
+      version: '1.0.0'
+    },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
+    }
+  }
+});
+
+// 2. Register Swagger UI
+fastify.register(require('@fastify/swagger-ui'), {
+  routePrefix: '/docs', // Access this at http://localhost:5000/docs
+  uiConfig: {
+    docExpansion: 'list',
+    deepLinking: false
+  },
+  exposeRoute: true
+});
+
+// --- SWAGGER INTEGRATION END ---
+
 // Register Routes
-fastify.register(require('./Routes/authRoutes'), { prefix: '/api/auth' });
-fastify.register(require('./Routes/studentRoutes'), { prefix: '/api/students' });
-fastify.register(require('./Routes/inventoryRoutes'), { prefix: '/api/inventory' });
-fastify.register(require('./Routes/messOpsRoutes'), { prefix: '/api/mess-ops' });
+fastify.register(require('./Routes/index'));
 
 // Basic Health Check Route
 fastify.get('/health', async (request, reply) => {
@@ -27,6 +58,7 @@ const start = async () => {
     const port = process.env.PORT || 5000;
     await fastify.listen({ port: port, host: '0.0.0.0' });
     console.log(`🚀 MBMS Backend ready at http://localhost:${port}`);
+    console.log(`📝 Documentation available at http://localhost:${port}/docs`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
