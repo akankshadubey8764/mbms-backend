@@ -1,4 +1,4 @@
-# Mess Bill Management System (MBMS) - Backend 🚀
+# Mess Bill Management System (MBMS) - Backend
 
 A robust RESTful API built with **Fastify** and **Node.js** to manage student mess records, admin operations, and automated billing.
 
