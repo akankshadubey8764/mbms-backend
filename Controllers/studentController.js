@@ -7,7 +7,11 @@ class StudentController {
         try {
             const { email, password, username, ...data } = request.body;
 
-            // 1. Check if user exists
+            // 1. Check if user exists and domain restriction
+            if (!email.endsWith('@tpgit.com')) {
+                return reply.status(400).send({ message: 'Access denied. Only @tpgit.com emails are accepted.' });
+            }
+
             const existingUser = await authService.getOne({ email });
             if (existingUser) {
                 return reply.status(400).send({ message: 'User already exists' });

@@ -122,12 +122,19 @@ class AdminController {
     async getAllMessBills(request, reply) {
         try {
             const students = await studentService.get({ 'messBills.0': { $exists: true } });
-            const result = students.map(s => ({
-                studentId: s._id,
-                name: `${s.firstName} ${s.lastName}`,
-                regNumber: s.regNumber,
-                bills: s.messBills
-            }));
+            const result = students.map(s => {
+                const latestBill = s.messBills[s.messBills.length - 1];
+                return {
+                    _id: s._id, // Match frontend expected _id
+                    studentName: `${s.firstName} ${s.lastName}`,
+                    regNumber: s.regNumber,
+                    amount: latestBill.amountIssued,
+                    status: latestBill.paymentStatus === 'PAID' ? 'PAID' : 'PENDING',
+                    email: s.email,
+                    month: latestBill.month,
+                    year: latestBill.year
+                };
+            });
             return reply.send(result);
         } catch (err) {
             return reply.status(500).send({ message: err.message });
@@ -204,12 +211,46 @@ class AdminController {
         }
     }
 
+    async resolveQuery(request, reply) {
+        try {
+            const { id } = request.params;
+            const result = await queryService.updateOne({ _id: id }, { status: 'RESOLVED' });
+            if (!result) return reply.status(404).send({ message: 'Query not found' });
+            return reply.send({ message: 'Query marked as resolved' });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
+
     async closeBillingCycle(request, reply) {
         try {
             const { month, year } = request.body;
             return reply.send({ message: `Billing cycle for ${month}/${year} closed` });
         } catch (err) {
             return reply.status(400).send({ message: err.message });
+        }
+    }
+    async getDashboardStats(request, reply) {
+        try {
+            const allStudents = await studentService.get({});
+            const approvedStudents = allStudents.filter(s => s.status === 'APPROVED');
+            const pendingStudents = allStudents.filter(s => s.status === 'PENDING');
+
+            let totalRevenue = 0;
+            approvedStudents.forEach(s => {
+                s.messBills.forEach(b => {
+                    totalRevenue += (b.amountPaid || 0);
+                });
+            });
+
+            return reply.send({
+                totalStudents: approvedStudents.length,
+                totalRevenue,
+                activeStudents: approvedStudents.length, // Assume all approved are active for now
+                pendingApprovals: pendingStudents.length
+            });
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
         }
     }
 }

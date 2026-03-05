@@ -7,14 +7,21 @@ async function adminRoutes(fastify, options) {
     fastify.addHook('preHandler', fastify.authenticate);
     fastify.addHook('preHandler', fastify.authorize(['admin']));
 
-    // 6. List students awaiting approval
+    // 6. Dashboard Statistics
+    fastify.route({
+        method: 'GET',
+        url: '/stats',
+        handler: adminController.getDashboardStats
+    });
+
+    // 7. List students awaiting approval
     fastify.route({
         method: 'GET',
         url: '/pending-approvals',
         handler: adminController.getPendingApprovals
     });
 
-    // 7. Approve a student registration
+    // 8. Approve a student registration
     fastify.route({
         method: 'POST',
         url: '/requests/:id/approve',
@@ -145,6 +152,16 @@ async function adminRoutes(fastify, options) {
         method: 'GET',
         url: '/queries',
         handler: adminController.getAllQueries
+    });
+
+    // 29. Mark query as resolved
+    fastify.route({
+        method: 'PUT',
+        url: '/queries/:id/resolve',
+        schema: {
+            params: S.object().prop('id', S.string().required())
+        },
+        handler: adminController.resolveQuery
     });
 
     // 29. Locks a billing month
