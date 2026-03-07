@@ -107,6 +107,70 @@ class StudentController {
             return reply.status(400).send({ message: err.message });
         }
     }
+
+    async editStudent(request, reply) {
+        try {
+            const { id } = request.params;
+            const updateData = request.body;
+            const result = await studentService.updateOne({ _id: id }, updateData, { new: true });
+            if (!result) return reply.status(404).send({ message: 'Student not found' });
+            return reply.send({ message: 'Student updated successfully', student: result });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    async deleteStudent(request, reply) {
+        try {
+            const { id } = request.params;
+            const result = await studentService.remove({ _id: id });
+            if (result.deletedCount === 0) return reply.status(404).send({ message: 'Student not found' });
+            return reply.send({ message: 'Student deleted successfully' });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    async getStudentCounts(request, reply) {
+        try {
+            const allStudents = await studentService.get({ status: 'APPROVED' });
+            const counts = {};
+            allStudents.forEach(student => {
+                const dept = student.department || 'Unknown';
+                const year = student.year || 'Unknown';
+                if (!counts[dept]) {
+                    counts[dept] = { count: 0, 'departments-count': [] };
+                }
+                counts[dept].count += 1;
+                let yearObj = counts[dept]['departments-count'].find(o => Object.keys(o)[0] === year);
+                if (!yearObj) {
+                    yearObj = { [year]: 0 };
+                    counts[dept]['departments-count'].push(yearObj);
+                }
+                yearObj[year] += 1;
+            });
+            return reply.send(counts);
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
+        }
+    }
+
+    async exportCSV(request, reply) {
+        try {
+            const allStudents = await studentService.get({ status: 'APPROVED' });
+            let csv = 'S.No.,RegNumber,Name,Email,Mobile,Department,Year,Room No.,Block\n';
+            allStudents.forEach((s, index) => {
+                const name = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+                const cleanName = `"${name.replace(/"/g, '""')}"`;
+                csv += `${index + 1},${s.regNumber || ''},${cleanName},${s.email || ''},${s.phone || ''},${s.department || ''},${s.year || ''},${s.roomNo || ''},${s.block || ''}\n`;
+            });
+            reply.header('Content-Type', 'text/csv');
+            reply.header('Content-Disposition', 'attachment; filename="students.csv"');
+            return reply.send(csv);
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
+        }
+    }
 }
 
 module.exports = new StudentController();

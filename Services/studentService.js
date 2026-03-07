@@ -14,10 +14,13 @@ const updateOne = async (criteria, dataToSet, options) =>
 
 const count = async (criteria) => Student.countDocuments(criteria);
 
+const remove = async (criteria) => Student.deleteOne(criteria);
+
 module.exports = {
     add,
     get,
     getOne,
     updateOne,
-    count
+    count,
+    remove
 };

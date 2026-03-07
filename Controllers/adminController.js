@@ -52,8 +52,11 @@ class AdminController {
 
     async getApprovedStudents(request, reply) {
         try {
-            const { skip = 0, limit = 10 } = request.query;
+            const { skip = 0, limit = 10, department, year } = request.query;
             const criteria = { status: 'APPROVED' };
+            if (department) criteria.department = department;
+            if (year) criteria.year = year;
+
             const [data, total] = await Promise.all([
                 studentService.get(criteria, {}, { skip: Number(skip), limit: Number(limit) }),
                 studentService.count(criteria)

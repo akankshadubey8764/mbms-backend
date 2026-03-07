@@ -44,7 +44,7 @@ async function studentRoutes(fastify, options) {
             tags: ['Student'],
             description: 'Get the latest mess bill for the logged-in student',
             // This line tells Swagger to show the lock icon and Authorization input
-            security: [{ bearerAuth: [] }] 
+            security: [{ bearerAuth: [] }]
         },
         // 2. KEEP YOUR EXISTING AUTH LOGIC
         preHandler: [fastify.authenticate, fastify.authorize(['student'])],
@@ -65,6 +65,40 @@ async function studentRoutes(fastify, options) {
         url: '/bills/upload-proof',
         preHandler: [fastify.authenticate, fastify.authorize(['student'])],
         handler: studentController.uploadPaymentProof
+    });
+
+    // 21. Edit student
+    fastify.route({
+        method: 'PUT',
+        url: '/:id',
+        schema: {
+            params: S.object().prop('id', S.string().required())
+        },
+        handler: studentController.editStudent
+    });
+
+    // 22. Delete student
+    fastify.route({
+        method: 'DELETE',
+        url: '/:id',
+        schema: {
+            params: S.object().prop('id', S.string().required())
+        },
+        handler: studentController.deleteStudent
+    });
+
+    // 23. Get student counts by department
+    fastify.route({
+        method: 'GET',
+        url: '/counts',
+        handler: studentController.getStudentCounts
+    });
+
+    // 24. Export students to CSV
+    fastify.route({
+        method: 'GET',
+        url: '/export-csv',
+        handler: studentController.exportCSV
     });
 }
 
