@@ -7,8 +7,13 @@ const bcrypt = require('bcryptjs');
 class AdminController {
     async getPendingApprovals(request, reply) {
         try {
-            const result = await studentService.get({ status: 'PENDING' });
-            return reply.send(result);
+            const { skip = 0, limit = 10 } = request.query;
+            const criteria = { status: 'PENDING' };
+            const [data, total] = await Promise.all([
+                studentService.get(criteria, {}, { skip: Number(skip), limit: Number(limit) }),
+                studentService.count(criteria)
+            ]);
+            return reply.send({ data, total });
         } catch (err) {
             return reply.status(500).send({ message: err.message });
         }
@@ -47,8 +52,13 @@ class AdminController {
 
     async getApprovedStudents(request, reply) {
         try {
-            const result = await studentService.get({ status: 'APPROVED' });
-            return reply.send(result);
+            const { skip = 0, limit = 10 } = request.query;
+            const criteria = { status: 'APPROVED' };
+            const [data, total] = await Promise.all([
+                studentService.get(criteria, {}, { skip: Number(skip), limit: Number(limit) }),
+                studentService.count(criteria)
+            ]);
+            return reply.send({ data, total });
         } catch (err) {
             return reply.status(500).send({ message: err.message });
         }
@@ -121,12 +131,20 @@ class AdminController {
 
     async getAllMessBills(request, reply) {
         try {
-            const students = await studentService.get({ 'messBills.0': { $exists: true } });
-            const result = students.map(s => {
+            const { skip = 0, limit = 10 } = request.query;
+            const criteria = { 'messBills.0': { $exists: true } };
+
+            // For count, we need to know how many students have bills
+            const [students, total] = await Promise.all([
+                studentService.get(criteria, {}, { skip: Number(skip), limit: Number(limit) }),
+                studentService.count(criteria)
+            ]);
+
+            const data = students.map(s => {
                 const latestBill = s.messBills[s.messBills.length - 1];
                 return {
-                    _id: s._id, // Match frontend expected _id
-                    studentName: `${s.firstName} ${s.lastName}`,
+                    _id: s._id,
+                    studentName: `${s.firstName || ''} ${s.lastName || ''}`,
                     regNumber: s.regNumber,
                     amount: latestBill.amountIssued,
                     status: latestBill.paymentStatus === 'PAID' ? 'PAID' : 'PENDING',
@@ -135,7 +153,7 @@ class AdminController {
                     year: latestBill.year
                 };
             });
-            return reply.send(result);
+            return reply.send({ data, total });
         } catch (err) {
             return reply.status(500).send({ message: err.message });
         }
@@ -195,8 +213,22 @@ class AdminController {
 
     async getCurrentStock(request, reply) {
         try {
-            const result = await groceryService.get({});
-            return reply.send(result);
+            const { skip = 0, limit = 10 } = request.query;
+            const [items, total] = await Promise.all([
+                groceryService.get({}, {}, { skip: Number(skip), limit: Number(limit) }),
+                groceryService.count({})
+            ]);
+
+            const data = items.map(item => ({
+                _id: item._id,
+                itemName: item.itemName,
+                currentStock: item.stock?.remaining || 0,
+                minimumStock: 20, // Default threshold
+                unit: item.unit,
+                category: 'Grocery',
+                status: (item.stock?.remaining || 0) > 50 ? 'Good' : (item.stock?.remaining || 0) > 20 ? 'Low' : 'Critical'
+            }));
+            return reply.send({ data, total });
         } catch (err) {
             return reply.status(500).send({ message: err.message });
         }
@@ -204,8 +236,12 @@ class AdminController {
 
     async getAllQueries(request, reply) {
         try {
-            const result = await queryService.get({}, {}, {}, 'student');
-            return reply.send(result);
+            const { skip = 0, limit = 10 } = request.query;
+            const [queries, total] = await Promise.all([
+                queryService.get({}, {}, { skip: Number(skip), limit: Number(limit) }, 'student'),
+                queryService.count({})
+            ]);
+            return reply.send({ data: queries, total });
         } catch (err) {
             return reply.status(500).send({ message: err.message });
         }
