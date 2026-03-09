@@ -228,17 +228,22 @@ class AdminController {
     async getStudentsMessStatus(request, reply) {
         try {
             const { year } = request.query;
+            const searchYear = Number(year) || new Date().getFullYear();
             const students = await studentService.get({ status: 'APPROVED' });
 
             const data = students.map(s => {
                 const billStatus = {};
                 for (let m = 1; m <= 12; m++) {
-                    const bill = s.messBills.find(b => b.month === m && b.year === Number(year));
-                    billStatus[m] = bill ? {
+                    const bill = (s.messBills || []).find(b => b.month === m && Number(b.year) === searchYear);
+                    billStatus[m] = bill ? [{
                         status: bill.paymentStatus,
                         isVerified: bill.isVerified,
-                        amount: bill.amountIssued
-                    } : null;
+                        amountIssued: bill.amountIssued,
+                        amountPaid: bill.amountPaid,
+                        daysPresent: bill.daysPresent,
+                        daysAbsent: bill.daysAbsent,
+                        calculatedAt: bill.calculatedAt
+                    }] : [];
                 }
 
                 return {
