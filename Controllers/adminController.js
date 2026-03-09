@@ -96,12 +96,22 @@ class AdminController {
 
     async calculateMessBills(request, reply) {
         try {
-            const { month, year, dailyRate, attendance } = request.body;
+            const { month, year, dailyRate = 300, attendance } = request.body;
             const results = [];
 
             for (const record of attendance) {
                 const { studentId, daysPresent, daysAbsent } = record;
-                const amount = daysPresent * dailyRate;
+
+                // Logic: 
+                // for 1 day rs = 300
+                // if absent days >= 7, only present days are charged
+                // if absent days < 7, total days (present + absent) are charged
+                let amount = 0;
+                if (daysAbsent >= 7) {
+                    amount = daysPresent * dailyRate;
+                } else {
+                    amount = (daysPresent + daysAbsent) * dailyRate;
+                }
 
                 const student = await studentService.getOne({ _id: studentId });
                 if (student) {
@@ -129,6 +139,122 @@ class AdminController {
             return reply.send({ message: 'Bills calculated successfully', results });
         } catch (err) {
             return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    async bulkUploadMessBills(request, reply) {
+        try {
+            const { year, data } = request.body; // data is array of objects from CSV
+
+            // Check timeframe: Enabled only on last day of month and first day of next month
+            const today = new Date();
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            const currentDay = today.getDate();
+
+            const isLastDay = currentDay === lastDayOfMonth;
+            const isFirstDay = currentDay === 1;
+
+            if (!isLastDay && !isFirstDay) {
+                return reply.status(403).send({ message: "Bulk upload is only available on the last day of the month and the first day of the next month." });
+            }
+
+            const monthMap = {
+                'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+                'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+            };
+
+            const currentMonth = today.getMonth() + 1;
+            const results = [];
+
+            for (const row of data) {
+                const regNumber = row['Reg Number'];
+                if (!regNumber) continue;
+
+                const student = await studentService.getOne({ regNumber });
+                if (!student) continue;
+
+                const updatedBills = [...student.messBills];
+
+                // Iterate through months provided in headers
+                for (const [monthName, monthIndex] of Object.entries(monthMap)) {
+                    // Ignore future months
+                    if (year > today.getFullYear() || (year === today.getFullYear() && monthIndex > currentMonth)) {
+                        continue;
+                    }
+
+                    const presentKey = `${monthName} Present`;
+                    const absentKey = `${monthName} Absent`;
+
+                    if (row[presentKey] !== undefined && row[absentKey] !== undefined) {
+                        const daysPresent = Number(row[presentKey]);
+                        const daysAbsent = Number(row[absentKey]);
+                        const dailyRate = 300;
+
+                        let amount = 0;
+                        if (daysAbsent >= 7) {
+                            amount = daysPresent * dailyRate;
+                        } else {
+                            amount = (daysPresent + daysAbsent) * dailyRate;
+                        }
+
+                        const existingBillIdx = updatedBills.findIndex(b => b.month === monthIndex && b.year === Number(year));
+                        if (existingBillIdx !== -1) {
+                            updatedBills[existingBillIdx].daysPresent = daysPresent;
+                            updatedBills[existingBillIdx].daysAbsent = daysAbsent;
+                            updatedBills[existingBillIdx].amountIssued = amount;
+                            // Ensure it remains UNPAID on recalculation unless explicitly handled
+                        } else {
+                            updatedBills.push({
+                                month: monthIndex,
+                                year: Number(year),
+                                daysPresent,
+                                daysAbsent,
+                                amountIssued: amount
+                            });
+                        }
+                    }
+                }
+
+                await studentService.updateOne({ regNumber }, { messBills: updatedBills });
+                results.push(regNumber);
+            }
+
+            return reply.send({ message: `Bulk upload processed for ${results.length} students.`, processedCount: results.length });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    async getStudentsMessStatus(request, reply) {
+        try {
+            const { year } = request.query;
+            const students = await studentService.get({ status: 'APPROVED' });
+
+            const data = students.map(s => {
+                const billStatus = {};
+                for (let m = 1; m <= 12; m++) {
+                    const bill = s.messBills.find(b => b.month === m && b.year === Number(year));
+                    billStatus[m] = bill ? {
+                        status: bill.paymentStatus,
+                        isVerified: bill.isVerified,
+                        amount: bill.amountIssued
+                    } : null;
+                }
+
+                return {
+                    _id: s._id,
+                    name: `${s.firstName || ''} ${s.lastName || ''}`,
+                    dept: s.department,
+                    year: s.year,
+                    phone: s.phone,
+                    regNumber: s.regNumber,
+                    billStatus
+                };
+            });
+
+            return reply.send(data);
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
         }
     }
 
@@ -267,6 +393,25 @@ class AdminController {
             return reply.send({ message: `Billing cycle for ${month}/${year} closed` });
         } catch (err) {
             return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    async checkBulkUploadWindow(request, reply) {
+        try {
+            const today = new Date();
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            const currentDay = today.getDate();
+
+            const isLastDay = currentDay === lastDayOfMonth;
+            const isFirstDay = currentDay === 1;
+
+            return reply.send({
+                allowed: isLastDay || isFirstDay,
+                currentDay,
+                lastDayOfMonth
+            });
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
         }
     }
     async getDashboardStats(request, reply) {

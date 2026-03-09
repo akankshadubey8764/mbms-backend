@@ -93,11 +93,32 @@ async function adminRoutes(fastify, options) {
         method: 'GET',
         url: '/mess-bills',
         schema: {
-            tags: ['Admin'], // This groups it under 'Admin' in Swagger
+            tags: ['Admin'],
             description: 'Get all student mess bills',
-            security: [{ bearerAuth: [] }] // This enables the padlock and sends the token
+            security: [{ bearerAuth: [] }]
         },
         handler: adminController.getAllMessBills
+    });
+
+    // 15a. Fetch mess bills status for all students (Calendar view)
+    fastify.route({
+        method: 'GET',
+        url: '/mess-bills/status-list',
+        handler: adminController.getStudentsMessStatus
+    });
+
+    // 15b. Bulk Upload Mess Bills
+    fastify.route({
+        method: 'POST',
+        url: '/mess-bills/bulk-upload',
+        handler: adminController.bulkUploadMessBills
+    });
+
+    // 15c. Check Bulk Upload Window
+    fastify.route({
+        method: 'GET',
+        url: '/mess-bills/upload-window',
+        handler: adminController.checkBulkUploadWindow
     });
 
     // 16. Checks if bills already exist

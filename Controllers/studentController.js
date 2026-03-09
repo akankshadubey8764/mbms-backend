@@ -99,7 +99,8 @@ class StudentController {
 
             const updatedBills = [...student.messBills];
             updatedBills[billIndex].receiptUrl = receiptUrl;
-            updatedBills[billIndex].paymentStatus = 'PARTIAL';
+            updatedBills[billIndex].paymentStatus = 'PAID';
+            updatedBills[billIndex].isVerified = true;
 
             await studentService.updateOne({ email }, { messBills: updatedBills });
             return reply.send({ message: 'Payment receipt uploaded successfully', bill: updatedBills[billIndex] });
