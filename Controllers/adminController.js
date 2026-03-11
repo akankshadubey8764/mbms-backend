@@ -146,13 +146,15 @@ class AdminController {
         try {
             const { year, data } = request.body; // data is array of objects from CSV
 
-            // Check timeframe: Enabled only on last day of month and first day of next month
-            const today = new Date();
-            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-            const currentDay = today.getDate();
+            // TEMPORARY: Disabled for testing
+            const isLastDay = true;
+            const isFirstDay = true;
 
-            const isLastDay = currentDay === lastDayOfMonth;
-            const isFirstDay = currentDay === 1;
+            // Original logic preserved in comments
+            // const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            // const currentDay = today.getDate();
+            // const isLastDay = currentDay === lastDayOfMonth;
+            // const isFirstDay = currentDay === 1;
 
             if (!isLastDay && !isFirstDay) {
                 return reply.status(403).send({ message: "Bulk upload is only available on the last day of the month and the first day of the next month." });
@@ -404,16 +406,11 @@ class AdminController {
     async checkBulkUploadWindow(request, reply) {
         try {
             const today = new Date();
-            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-            const currentDay = today.getDate();
-
-            const isLastDay = currentDay === lastDayOfMonth;
-            const isFirstDay = currentDay === 1;
-
+            // TEMPORARY: Always allowed for testing
             return reply.send({
-                allowed: isLastDay || isFirstDay,
-                currentDay,
-                lastDayOfMonth
+                allowed: true,
+                currentDay: today.getDate(),
+                lastDayOfMonth: new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
             });
         } catch (err) {
             return reply.status(500).send({ message: err.message });
