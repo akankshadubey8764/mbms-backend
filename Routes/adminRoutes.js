@@ -5,12 +5,17 @@ const emailRegex = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
 
 async function adminRoutes(fastify, options) {
     fastify.addHook('preHandler', fastify.authenticate);
-    fastify.addHook('preHandler', fastify.authorize(['admin']));
+
+    // Helper for admin-only routes
+    const adminOnly = [fastify.authorize(['admin'])];
+    // Helper for shared routes
+    const adminManager = [fastify.authorize(['admin', 'mess_manager'])];
 
     // 6. Dashboard Statistics
     fastify.route({
         method: 'GET',
         url: '/stats',
+        preHandler: adminOnly,
         handler: adminController.getDashboardStats
     });
 
@@ -18,6 +23,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/pending-approvals',
+        preHandler: adminOnly,
         handler: adminController.getPendingApprovals
     });
 
@@ -25,6 +31,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'POST',
         url: '/requests/:id/approve',
+        preHandler: adminOnly,
         schema: {
             params: S.object().prop('id', S.string().required())
         },
@@ -35,6 +42,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'DELETE',
         url: '/requests/:id/reject',
+        preHandler: adminOnly,
         schema: {
             params: S.object().prop('id', S.string().required()),
             body: S.object().prop('reason', S.string().required())
@@ -46,6 +54,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/approved-students',
+        preHandler: adminOnly,
         handler: adminController.getApprovedStudents
     });
 
@@ -53,6 +62,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'POST',
         url: '/add-students',
+        preHandler: adminOnly,
         schema: {
             body: S.object()
                 .prop('email', S.string().pattern(emailRegex).required())
@@ -73,6 +83,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'POST',
         url: '/mess-bills/calculate',
+        preHandler: adminOnly,
         schema: {
             body: S.object()
                 .prop('month', S.number().required())
@@ -92,6 +103,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/mess-bills',
+        preHandler: adminOnly,
         schema: {
             tags: ['Admin'],
             description: 'Get all student mess bills',
@@ -104,6 +116,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/mess-bills/status-list',
+        preHandler: adminOnly,
         handler: adminController.getStudentsMessStatus
     });
 
@@ -111,6 +124,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'POST',
         url: '/mess-bills/bulk-upload',
+        preHandler: adminOnly,
         handler: adminController.bulkUploadMessBills
     });
 
@@ -118,6 +132,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/mess-bills/upload-window',
+        preHandler: adminOnly,
         handler: adminController.checkBulkUploadWindow
     });
 
@@ -125,6 +140,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/mess-bills/exists',
+        preHandler: adminOnly,
         schema: {
             query: S.object()
                 .prop('month', S.number().required())
@@ -137,6 +153,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'PATCH',
         url: '/mess-bills/status',
+        preHandler: adminOnly,
         schema: {
             body: S.object()
                 .prop('studentId', S.string().required())
@@ -151,6 +168,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'PATCH',
         url: '/mess-bills/verify-payment',
+        preHandler: adminOnly,
         schema: {
             body: S.object()
                 .prop('studentId', S.string().required())
@@ -161,10 +179,11 @@ async function adminRoutes(fastify, options) {
         handler: adminController.verifyPayment
     });
 
-    // 25. Fetches current stock status
+    // 25. Fetches current stock status (Shared with Mess Manager)
     fastify.route({
         method: 'GET',
         url: '/stock',
+        preHandler: adminManager,
         handler: adminController.getCurrentStock
     });
 
@@ -172,6 +191,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/queries',
+        preHandler: adminOnly,
         handler: adminController.getAllQueries
     });
 
@@ -179,6 +199,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'PUT',
         url: '/queries/:id/resolve',
+        preHandler: adminOnly,
         schema: {
             params: S.object().prop('id', S.string().required())
         },
@@ -189,6 +210,7 @@ async function adminRoutes(fastify, options) {
     fastify.route({
         method: 'POST',
         url: '/billing-cycle/close',
+        preHandler: adminOnly,
         schema: {
             body: S.object()
                 .prop('month', S.number().required())

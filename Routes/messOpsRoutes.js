@@ -18,12 +18,7 @@ async function messOpsRoutes(fastify, options) {
         schema: {
             body: S.object()
                 .prop('week', S.string().required())
-                .prop('menuItems', S.array().items(
-                    S.object()
-                        .prop('day', S.string().required())
-                        .prop('mealTime', S.string().enum(['Breakfast', 'Lunch', 'Dinner']).required())
-                        .prop('items', S.array().items(S.string()).required())
-                ).required())
+                .prop('menuItems', S.object().required().additionalProperties(true))
         },
         handler: messOpsController.updateMenu
     });
@@ -32,7 +27,7 @@ async function messOpsRoutes(fastify, options) {
     fastify.route({
         method: 'POST',
         url: '/add_grocery_purchase',
-        preHandler: [fastify.authenticate, fastify.authorize(['mess_manager'])],
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
         schema: {
             body: S.object()
                 .prop('itemName', S.string().required())
@@ -56,7 +51,7 @@ async function messOpsRoutes(fastify, options) {
     fastify.route({
         method: 'PATCH',
         url: '/stock/issue',
-        preHandler: [fastify.authenticate, fastify.authorize(['mess_manager'])],
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
         schema: {
             body: S.object()
                 .prop('itemId', S.string().required())
@@ -69,7 +64,7 @@ async function messOpsRoutes(fastify, options) {
     fastify.route({
         method: 'POST',
         url: '/grocery/upload-invoice',
-        preHandler: [fastify.authenticate, fastify.authorize(['mess_manager'])],
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
         handler: messOpsController.uploadGroceryInvoice
     });
 }
