@@ -372,7 +372,15 @@ class AdminController {
         try {
             const { skip = 0, limit = 10 } = request.query;
             const [queries, total] = await Promise.all([
-                queryService.get({}, {}, { skip: Number(skip), limit: Number(limit) }, 'student'),
+                queryService.get(
+                    {},
+                    'queryArea queryText status createdAt updatedAt student',
+                    { skip: Number(skip), limit: Number(limit), sort: { createdAt: -1 } },
+                    {
+                        path: 'student',
+                        select: 'firstName lastName department year phone regNumber'
+                    }
+                ),
                 queryService.count({})
             ]);
             return reply.send({ data: queries, total });
