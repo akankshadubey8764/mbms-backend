@@ -421,27 +421,55 @@ class AdminController {
     }
     async getDashboardStats(request, reply) {
         try {
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const currentYear = now.getFullYear();
+
             const allStudents = await studentService.get({});
             const approvedStudents = allStudents.filter(s => s.status === 'APPROVED');
             const pendingStudents = allStudents.filter(s => s.status === 'PENDING');
 
+            // 1. Calculate Unpaid Students for Current Month
+            const unpaidStudentsCount = approvedStudents.filter(s => {
+                const currentBill = (s.messBills || []).find(b => b.month === currentMonth && Number(b.year) === currentYear);
+                return !currentBill || currentBill.paymentStatus !== 'PAID';
+            }).length;
+
+            // 2. Calculate Total Revenue (All time or current year)
             let totalRevenue = 0;
             approvedStudents.forEach(s => {
-                s.messBills.forEach(b => {
+                (s.messBills || []).forEach(b => {
                     totalRevenue += (b.amountPaid || 0);
+                });
+            });
+
+            // 3. Calculate Current Month's Inventory Expenditure (Revenue for vendors, cost for us)
+            const allInventory = await groceryService.get({});
+            let inventoryExpenditure = 0;
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            allInventory.forEach(item => {
+                (item.purchaseHistory || []).forEach(purchase => {
+                    const purchaseDate = new Date(purchase.date);
+                    if (purchaseDate >= startOfMonth) {
+                        inventoryExpenditure += (purchase.totalPrice || 0);
+                    }
                 });
             });
 
             return reply.send({
                 totalStudents: approvedStudents.length,
                 totalRevenue,
-                activeStudents: approvedStudents.length, // Assume all approved are active for now
+                unpaidStudentsCount,
+                inventoryExpenditure,
+                activeStudents: approvedStudents.length,
                 pendingApprovals: pendingStudents.length
             });
         } catch (err) {
             return reply.status(500).send({ message: err.message });
         }
     }
+
 }
 
 module.exports = new AdminController();

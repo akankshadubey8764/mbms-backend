@@ -19,9 +19,18 @@ async function queryRoutes(fastify, options) {
     fastify.route({
         method: 'GET',
         url: '/get_queries',
-        preHandler: [fastify.authenticate, fastify.authorize(['admin'])],
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
         handler: messOpsController.getAllQueries
     });
+
+    // 28b. Get Self Queries API (Student)
+    fastify.route({
+        method: 'GET',
+        url: '/my_queries',
+        preHandler: [fastify.authenticate, fastify.authorize(['student'])],
+        handler: messOpsController.getMyQueries
+    });
 }
+
 
 module.exports = queryRoutes;

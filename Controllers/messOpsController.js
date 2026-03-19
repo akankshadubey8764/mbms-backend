@@ -47,7 +47,36 @@ class MessOpsController {
 
     async getAllQueries(request, reply) {
         try {
-            const queries = await queryService.get({}, {}, {}, 'student');
+            const { startDate, endDate, queryArea, status } = request.query;
+            const criteria = {};
+
+            if (queryArea) criteria.queryArea = queryArea;
+            if (status) criteria.status = status;
+
+            if (startDate || endDate) {
+                criteria.createdAt = {};
+                if (startDate) criteria.createdAt.$gte = new Date(startDate);
+                if (endDate) {
+                    const end = new Date(endDate);
+                    end.setHours(23, 59, 59, 999);
+                    criteria.createdAt.$lte = end;
+                }
+            }
+
+            const queries = await queryService.get(criteria, {}, { sort: { createdAt: -1 } }, 'student');
+            return reply.send(queries);
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
+        }
+    }
+
+
+    async getMyQueries(request, reply) {
+        try {
+            const student = await studentService.getOne({ email: request.user.email });
+            if (!student) return reply.status(404).send({ message: 'Student profile not found' });
+
+            const queries = await queryService.get({ student: student._id }, {}, { sort: { createdAt: -1 } });
             return reply.send(queries);
         } catch (err) {
             return reply.status(500).send({ message: err.message });
