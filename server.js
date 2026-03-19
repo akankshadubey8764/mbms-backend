@@ -3,7 +3,12 @@ const fastify = require('fastify')({ logger: { transport: { target: 'pino-pretty
 const mongoose = require('mongoose');
 
 // Register Plugins
-fastify.register(require('@fastify/cors'), { origin: '*' });
+fastify.register(require('@fastify/cors'), {
+  origin: true, // Echoes the request origin, better than '*' for credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+});
 fastify.register(require('./plugins/db'));
 fastify.register(require('./plugins/auth'));
 

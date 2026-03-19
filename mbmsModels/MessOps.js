@@ -16,7 +16,7 @@ const querySchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   queryArea: { type: String, required: true },
   queryText: { type: String, required: true },
-  status: { type: String, enum: ['Open', 'Resolved'], default: 'Open' },
+  status: { type: String, enum: ['Open', 'Resolved', 'Reopened'], default: 'Open' },
   response: { type: String }
 }, { timestamps: true });
 
