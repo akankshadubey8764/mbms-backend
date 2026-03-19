@@ -185,6 +185,24 @@ class MessOpsController {
             return reply.status(400).send({ message: err.message });
         }
     }
+
+    async reopenQuery(request, reply) {
+        try {
+            const { id } = request.params;
+            const student = await studentService.getOne({ email: request.user.email });
+            if (!student) return reply.status(404).send({ message: 'Student profile not found' });
+
+            const result = await queryService.updateOne(
+                { _id: id, student: student._id },
+                { status: 'Reopened' },
+                { new: true }
+            );
+            if (!result) return reply.status(404).send({ message: 'Query not found or unauthorized' });
+            return reply.send({ message: 'Query reopened successfully', query: result });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
 }
 
 module.exports = new MessOpsController();

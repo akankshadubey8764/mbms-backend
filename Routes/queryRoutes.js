@@ -30,6 +30,14 @@ async function queryRoutes(fastify, options) {
         preHandler: [fastify.authenticate, fastify.authorize(['student'])],
         handler: messOpsController.getMyQueries
     });
+
+    // 28c. Reopen Query API (Student)
+    fastify.route({
+        method: 'PUT',
+        url: '/:id/reopen',
+        preHandler: [fastify.authenticate, fastify.authorize(['student'])],
+        handler: messOpsController.reopenQuery
+    });
 }
 
 

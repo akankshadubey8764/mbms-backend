@@ -370,10 +370,34 @@ class AdminController {
 
     async getAllQueries(request, reply) {
         try {
-            const { skip = 0, limit = 10 } = request.query;
+            const { skip = 0, limit = 100, startDate, endDate, status, queryArea } = request.query;
+
+            const criteria = {};
+
+            // 1. Default to last 3 months if no date range is provided
+            if (startDate || endDate) {
+                criteria.createdAt = {};
+                if (startDate) criteria.createdAt.$gte = new Date(startDate);
+                if (endDate) criteria.createdAt.$lte = new Date(endDate);
+            } else {
+                const threeMonthsAgo = new Date();
+                threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+                criteria.createdAt = { $gte: threeMonthsAgo };
+            }
+
+            // 2. Status filter (only apply if provided, otherwise show all)
+            if (status && status !== 'All') {
+                criteria.status = status;
+            }
+
+            // 3. Query Area filter (if provided)
+            if (queryArea && queryArea !== 'All') {
+                criteria.queryArea = queryArea;
+            }
+
             const [queries, total] = await Promise.all([
                 queryService.get(
-                    {},
+                    criteria,
                     'queryArea queryText status createdAt updatedAt student',
                     { skip: Number(skip), limit: Number(limit), sort: { createdAt: -1 } },
                     {
@@ -381,7 +405,7 @@ class AdminController {
                         select: 'firstName lastName department year phone regNumber'
                     }
                 ),
-                queryService.count({})
+                queryService.count(criteria)
             ]);
             return reply.send({ data: queries, total });
         } catch (err) {
