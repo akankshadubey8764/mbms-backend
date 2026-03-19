@@ -59,13 +59,34 @@ async function messOpsRoutes(fastify, options) {
         },
         handler: messOpsController.issueStock
     });
-
     // 26. Upload Grocery Invoice API (Mess Manager)
     fastify.route({
         method: 'POST',
         url: '/grocery/upload-invoice',
         preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
         handler: messOpsController.uploadGroceryInvoice
+    });
+
+    // Monthly Stock Management
+    fastify.route({
+        method: 'GET',
+        url: '/monthly-stock',
+        preHandler: [fastify.authenticate],
+        handler: messOpsController.getMonthlyStock
+    });
+
+    fastify.route({
+        method: 'POST',
+        url: '/monthly-stock/item',
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
+        handler: messOpsController.addMonthlyStockItem
+    });
+
+    fastify.route({
+        method: 'PATCH',
+        url: '/monthly-stock/item',
+        preHandler: [fastify.authenticate, fastify.authorize(['admin', 'mess_manager'])],
+        handler: messOpsController.updateMonthlyStockItem
     });
 }
 

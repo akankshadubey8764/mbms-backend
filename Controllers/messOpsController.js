@@ -2,6 +2,7 @@ const menuService = require('../Services/menuService');
 const queryService = require('../Services/queryService');
 const groceryService = require('../Services/groceryService');
 const studentService = require('../Services/studentService');
+const monthlyStockService = require('../Services/monthlyStockService');
 
 class MessOpsController {
     // Menu
@@ -199,6 +200,56 @@ class MessOpsController {
             );
             if (!result) return reply.status(404).send({ message: 'Query not found or unauthorized' });
             return reply.send({ message: 'Query reopened successfully', query: result });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    // Monthly Stock
+    async getMonthlyStock(request, reply) {
+        try {
+            const { month, year } = request.query;
+            const stock = await monthlyStockService.getOne({ month: Number(month), year: Number(year) });
+            return reply.send(stock || { month, year, items: [] });
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
+        }
+    }
+
+    async addMonthlyStockItem(request, reply) {
+        try {
+            const { month, year, item } = request.body;
+            let stock = await monthlyStockService.getOne({ month, year });
+
+            if (!stock) {
+                stock = await monthlyStockService.add({ month, year, items: [item] });
+            } else {
+                stock = await monthlyStockService.updateOne(
+                    { month, year },
+                    { $push: { items: item } },
+                    { new: true }
+                );
+            }
+            return reply.send({ message: 'Stock item added', stock });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    async updateMonthlyStockItem(request, reply) {
+        try {
+            const { month, year, itemId, quantityRemaining, comments } = request.body;
+            const stock = await monthlyStockService.updateOne(
+                { month, year, 'items._id': itemId },
+                {
+                    $set: {
+                        'items.$.quantityRemaining': quantityRemaining,
+                        'items.$.comments': comments
+                    }
+                },
+                { new: true }
+            );
+            return reply.send({ message: 'Stock item updated', stock });
         } catch (err) {
             return reply.status(400).send({ message: err.message });
         }
