@@ -4,28 +4,6 @@ const S = require('fluent-json-schema');
 const emailRegex = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
 
 async function studentRoutes(fastify, options) {
-    // 5. Registration API
-    fastify.route({
-        method: 'POST',
-        url: '/register',
-        schema: {
-            body: S.object()
-                .prop('email', S.string().pattern(emailRegex).required())
-                .prop('password', S.string().minLength(6).required())
-                .prop('username', S.string().required())
-                .prop('firstname', S.string().required())
-                .prop('lastname', S.string().required())
-                .prop('regnumber', S.string().required())
-                .prop('department', S.string().required())
-                .prop('year', S.string().required())
-                .prop('roomno', S.number().required())
-                .prop('block', S.string().required())
-                .prop('phnnum', S.string().required())
-                .prop('role', S.string().default('student'))
-                .prop('photo', S.string())
-        },
-        handler: studentController.register
-    });
 
     // 11. View User Profile API
     fastify.route({
