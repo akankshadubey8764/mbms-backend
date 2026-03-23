@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // Register Plugins
 fastify.register(require('@fastify/cors'), {
   origin: true, // Echoes the request origin, better than '*' for credentials
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 });

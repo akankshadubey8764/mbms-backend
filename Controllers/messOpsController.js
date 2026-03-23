@@ -218,6 +218,13 @@ class MessOpsController {
 
     async addMonthlyStockItem(request, reply) {
         try {
+            const today = new Date();
+            const dayOfMonth = today.getDate();
+            // Restrict to 1st or 2nd day of the month
+            if (dayOfMonth !== 1 && dayOfMonth !== 2) {
+                return reply.status(403).send({ message: 'Grocery invoices can only be added on the 1st or 2nd day of the month.' });
+            }
+
             const { month, year, item } = request.body;
             let stock = await monthlyStockService.getOne({ month, year });
 
@@ -238,6 +245,15 @@ class MessOpsController {
 
     async updateMonthlyStockItem(request, reply) {
         try {
+            const today = new Date();
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            const currentDay = today.getDate();
+
+            // Restrict to the last day of the month
+            if (currentDay !== lastDayOfMonth) {
+                return reply.status(403).send({ message: 'Remaining quantity can only be updated on the last day of the month.' });
+            }
+
             const { month, year, itemId, quantityRemaining, comments } = request.body;
             const stock = await monthlyStockService.updateOne(
                 { month, year, 'items._id': itemId },
