@@ -218,6 +218,19 @@ async function adminRoutes(fastify, options) {
         },
         handler: adminController.closeBillingCycle
     });
+
+    // Reset Student Password (Admin only)
+    fastify.route({
+        method: 'POST',
+        url: '/students/:id/reset-password',
+        preHandler: adminOnly,
+        schema: {
+            params: S.object().prop('id', S.string().required()),
+            body: S.object()
+                .prop('newPassword', S.string().minLength(6).required())
+        },
+        handler: adminController.resetStudentPassword
+    });
 }
 
 module.exports = adminRoutes;

@@ -502,6 +502,23 @@ class AdminController {
         }
     }
 
+    async resetStudentPassword(request, reply) {
+        try {
+            const { id } = request.params;
+            const { newPassword } = request.body;
+
+            const student = await studentService.getOne({ _id: id });
+            if (!student) return reply.status(404).send({ message: 'Student not found' });
+
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await authService.updateOne({ email: student.email }, { password: hashedPassword });
+
+            return reply.send({ message: 'Student password reset successfully' });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
+        }
+    }
+
 }
 
 module.exports = new AdminController();
