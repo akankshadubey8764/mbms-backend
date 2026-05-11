@@ -14,7 +14,13 @@ async function authRoutes(fastify, options) {
                 .prop('email', S.string().pattern(emailRegex).required())
                 .prop('password', S.string().required())
         },
-        handler: authController.login
+        handler: authController.login,
+        config: {
+            rateLimit: {
+                max: 10,
+                timeWindow: '15 minutes'
+            }
+        }
     });
 
     // Registration API
@@ -34,7 +40,6 @@ async function authRoutes(fastify, options) {
                 .prop('roomno', S.number().required())
                 .prop('block', S.string().required())
                 .prop('phnnum', S.string().required())
-                .prop('role', S.string().default('student'))
                 .prop('photo', S.string())
         },
         handler: studentController.register

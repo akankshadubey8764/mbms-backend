@@ -40,3 +40,12 @@ const studentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Student', studentSchema);
+
+const User = require('./User');
+
+studentSchema.post('findOneAndDelete', async (doc) => {
+  if (doc) {
+    await User.deleteOne({ email: doc.email });
+    console.log(`Cascade deleted User for student: ${doc.email}`);
+  }
+});

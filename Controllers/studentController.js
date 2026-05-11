@@ -99,8 +99,9 @@ class StudentController {
 
             const updatedBills = [...student.messBills];
             updatedBills[billIndex].receiptUrl = receiptUrl;
-            updatedBills[billIndex].paymentStatus = 'PAID';
-            updatedBills[billIndex].isVerified = true;
+            updatedBills[billIndex].paymentStatus = 'PARTIAL';
+            updatedBills[billIndex].isVerified = false;
+            updatedBills[billIndex].receiptUploadedAt = new Date();
 
             await studentService.updateOne({ email }, { messBills: updatedBills });
             return reply.send({ message: 'Payment receipt uploaded successfully', bill: updatedBills[billIndex] });
@@ -124,9 +125,19 @@ class StudentController {
     async deleteStudent(request, reply) {
         try {
             const { id } = request.params;
+
+            // 1. Find student to get the email
+            const student = await studentService.getOne({ _id: id });
+            if (!student) return reply.status(404).send({ message: 'Student not found' });
+
+            // 2. Delete the User account (Auth record)
+            await authService.remove({ email: student.email });
+
+            // 3. Delete the Student profile
             const result = await studentService.remove({ _id: id });
-            if (result.deletedCount === 0) return reply.status(404).send({ message: 'Student not found' });
-            return reply.send({ message: 'Student deleted successfully' });
+
+            if (result.deletedCount === 0) return reply.status(404).send({ message: 'Student profile not found during deletion' });
+            return reply.send({ message: 'Student and associated user account deleted successfully' });
         } catch (err) {
             return reply.status(400).send({ message: err.message });
         }

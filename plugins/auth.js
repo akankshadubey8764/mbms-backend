@@ -2,9 +2,11 @@ const fp = require('fastify-plugin');
 const jwt = require('@fastify/jwt');
 
 async function authPlugin(fastify, options) {
-    fastify.register(jwt, {
-        secret: process.env.JWT_SECRET || 'supersecret'
-    });
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('FATAL: JWT_SECRET environment variable is not set.');
+    }
+    fastify.register(jwt, { secret });
 
     fastify.decorate('authenticate', async (request, reply) => {
         try {

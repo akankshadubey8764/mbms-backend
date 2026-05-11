@@ -11,6 +11,12 @@ fastify.register(require('@fastify/cors'), {
 });
 fastify.register(require('./plugins/db'));
 fastify.register(require('./plugins/auth'));
+fastify.register(require('@fastify/helmet'));
+fastify.register(require('@fastify/rate-limit'), {
+  max: 100,
+  timeWindow: '1 minute'
+});
+
 
 // --- SWAGGER INTEGRATION START ---
 

@@ -13,11 +13,13 @@ const updateOne = async (criteria, dataToSet, options) =>
     User.findOneAndUpdate(criteria, dataToSet, options).lean();
 
 const count = async (criteria) => User.countDocuments(criteria);
+const remove = async (criteria) => User.deleteOne(criteria);
 
 module.exports = {
     add,
     get,
     getOne,
     updateOne,
-    count
+    count,
+    remove
 };

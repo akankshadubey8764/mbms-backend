@@ -45,37 +45,41 @@ async function studentRoutes(fastify, options) {
         handler: studentController.uploadPaymentProof
     });
 
-    // 21. Edit student
+    // 21. Edit student (Admin Only)
     fastify.route({
         method: 'PUT',
         url: '/:id',
+        preHandler: [fastify.authenticate, fastify.authorize(['admin'])],
         schema: {
             params: S.object().prop('id', S.string().required())
         },
         handler: studentController.editStudent
     });
 
-    // 22. Delete student
+    // 22. Delete student (Admin Only)
     fastify.route({
         method: 'DELETE',
         url: '/:id',
+        preHandler: [fastify.authenticate, fastify.authorize(['admin'])],
         schema: {
             params: S.object().prop('id', S.string().required())
         },
         handler: studentController.deleteStudent
     });
 
-    // 23. Get student counts by department
+    // 23. Get student counts by department (Auth Required)
     fastify.route({
         method: 'GET',
         url: '/counts',
+        preHandler: [fastify.authenticate],
         handler: studentController.getStudentCounts
     });
 
-    // 24. Export students to CSV
+    // 24. Export students to CSV (Admin Only)
     fastify.route({
         method: 'GET',
         url: '/export-csv',
+        preHandler: [fastify.authenticate, fastify.authorize(['admin'])],
         handler: studentController.exportCSV
     });
 }
