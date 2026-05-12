@@ -4,9 +4,13 @@ const jwt = require('@fastify/jwt');
 async function authPlugin(fastify, options) {
     const secret = process.env.JWT_SECRET;
     if (!secret) {
-        throw new Error('FATAL: JWT_SECRET environment variable is not set.');
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('FATAL: JWT_SECRET environment variable is not set. Deployment failed.');
+        } else {
+            console.warn('WARNING: JWT_SECRET is not set. Using a temporary fallback for development.');
+        }
     }
-    fastify.register(jwt, { secret });
+    fastify.register(jwt, { secret: secret || 'development-secret-key-do-not-use-in-production' });
 
     fastify.decorate('authenticate', async (request, reply) => {
         try {

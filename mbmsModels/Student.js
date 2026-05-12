@@ -14,6 +14,8 @@ const messBillSchema = new mongoose.Schema({
   },
   receiptUrl: { type: String },
   isVerified: { type: Boolean, default: false },
+  verificationData: { type: Object },
+  receiptUploadedAt: { type: Date },
   calculatedAt: { type: Date, default: Date.now }
 });
 

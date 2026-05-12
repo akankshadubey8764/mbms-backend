@@ -1,6 +1,7 @@
 const studentService = require('../Services/studentService');
 const authService = require('../Services/authService');
 const notificationService = require('../Services/notificationService');
+const verificationService = require('../Services/verificationService');
 const bcrypt = require('bcryptjs');
 
 class StudentController {
@@ -105,9 +106,50 @@ class StudentController {
             updatedBills[billIndex].receiptUploadedAt = new Date();
 
             await studentService.updateOne({ email }, { messBills: updatedBills });
-            return reply.send({ message: 'Payment receipt uploaded successfully', bill: updatedBills[billIndex] });
+
+            // Trigger AI Verification in the background (Async)
+            this.runAutoVerification(email, month, year, updatedBills[billIndex].amountIssued, receiptUrl);
+
+            return reply.send({ 
+                message: 'Payment receipt uploaded successfully. AI verification is in progress.', 
+                bill: updatedBills[billIndex] 
+            });
         } catch (err) {
             return reply.status(400).send({ message: err.message });
+        }
+    }
+
+    async runAutoVerification(email, month, year, expectedAmount, receiptUrl) {
+        try {
+            console.log(`Starting AI Verification for ${email} (${month}/${year})...`);
+            const result = await verificationService.verifyReceipt(receiptUrl, expectedAmount);
+            
+            if (result.success) {
+                const student = await studentService.getOne({ email });
+                const updatedBills = [...student.messBills];
+                const billIdx = updatedBills.findIndex(b => b.month === month && b.year === year);
+                
+                if (billIdx !== -1) {
+                    updatedBills[billIdx].isVerified = true;
+                    updatedBills[billIdx].paymentStatus = 'PAID';
+                    updatedBills[billIdx].verificationData = result.extractedData;
+                    
+                    await studentService.updateOne({ email }, { messBills: updatedBills });
+                    console.log(`AI Verification Successful for ${email}`);
+                    
+                    // Notify Student
+                    await notificationService.create({
+                        student: student._id,
+                        message: `Great news! Your payment for ${month}/${year} has been automatically verified by our AI system.`,
+                        type: 'PAYMENT_VERIFIED'
+                    });
+                }
+            } else {
+                console.log(`AI Verification Failed for ${email}: ${result.message}`);
+                // Optional: Notify student or admin about failure
+            }
+        } catch (err) {
+            console.error("Background Verification Failed:", err);
         }
     }
 
