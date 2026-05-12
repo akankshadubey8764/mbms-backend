@@ -17,7 +17,7 @@ async function authRoutes(fastify, options) {
         handler: authController.login,
         config: {
             rateLimit: {
-                max: 10,
+                max: 50, // Increased from 10
                 timeWindow: '15 minutes'
             }
         }

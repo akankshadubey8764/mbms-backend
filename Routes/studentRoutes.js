@@ -82,6 +82,22 @@ async function studentRoutes(fastify, options) {
         preHandler: [fastify.authenticate, fastify.authorize(['admin'])],
         handler: studentController.exportCSV
     });
+    
+    // 25. Get Notifications
+    fastify.route({
+        method: 'GET',
+        url: '/notifications',
+        preHandler: [fastify.authenticate, fastify.authorize(['student'])],
+        handler: studentController.getNotifications
+    });
+
+    // 26. Mark Notification as Read
+    fastify.route({
+        method: 'PATCH',
+        url: '/notifications/:id/read',
+        preHandler: [fastify.authenticate, fastify.authorize(['student'])],
+        handler: studentController.markNotificationRead
+    });
 }
 
 module.exports = studentRoutes;

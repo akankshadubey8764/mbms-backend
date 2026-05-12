@@ -2,18 +2,22 @@ require('dotenv').config();
 const fastify = require('fastify')({ logger: { transport: { target: 'pino-pretty' } } });
 const mongoose = require('mongoose');
 
+// Initialize Cron Jobs
+require('./jobs/cronJobs');
+
 // Register Plugins
 fastify.register(require('@fastify/cors'), {
-  origin: true, // Echoes the request origin, better than '*' for credentials
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  maxAge: 86400 // Cache preflight for 24 hours
 });
 fastify.register(require('./plugins/db'));
 fastify.register(require('./plugins/auth'));
 fastify.register(require('@fastify/helmet'));
 fastify.register(require('@fastify/rate-limit'), {
-  max: 100,
+  max: 300, // Increased from 100
   timeWindow: '1 minute'
 });
 

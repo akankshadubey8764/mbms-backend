@@ -2,6 +2,7 @@ const studentService = require('../Services/studentService');
 const authService = require('../Services/authService');
 const groceryService = require('../Services/groceryService');
 const queryService = require('../Services/queryService');
+const notificationService = require('../Services/notificationService');
 const bcrypt = require('bcryptjs');
 
 class AdminController {
@@ -134,6 +135,18 @@ class AdminController {
 
                     await studentService.updateOne({ _id: studentId }, { messBills: updatedBills });
                     results.push({ studentId, amount });
+
+                    // Create Notification for Student
+                    try {
+                        const monthName = new Date(0, month - 1).toLocaleString('en', { month: 'long' });
+                        await notificationService.create({
+                            student: studentId,
+                            message: `Your bill for ${monthName} ${year} is now available.`,
+                            type: 'BILL_PUBLISHED'
+                        });
+                    } catch (notificationErr) {
+                        console.error('Failed to create notification:', notificationErr);
+                    }
                 }
             }
             return reply.send({ message: 'Bills calculated successfully', results });
@@ -217,6 +230,17 @@ class AdminController {
 
                 await studentService.updateOne({ regNumber }, { messBills: updatedBills });
                 results.push(regNumber);
+
+                // Create Notification
+                try {
+                    await notificationService.create({
+                        student: student._id,
+                        message: `New mess bills have been published for ${year}. Please check your dashboard.`,
+                        type: 'BILL_PUBLISHED'
+                    });
+                } catch (err) {
+                    console.error('Failed to notify student:', regNumber, err);
+                }
             }
 
             return reply.send({ message: `Bulk upload processed for ${results.length} students.`, processedCount: results.length });

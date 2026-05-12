@@ -1,5 +1,6 @@
 const studentService = require('../Services/studentService');
 const authService = require('../Services/authService');
+const notificationService = require('../Services/notificationService');
 const bcrypt = require('bcryptjs');
 
 class StudentController {
@@ -181,6 +182,28 @@ class StudentController {
             return reply.send(csv);
         } catch (err) {
             return reply.status(500).send({ message: err.message });
+        }
+    }
+
+    async getNotifications(request, reply) {
+        try {
+            const student = await studentService.getOne({ email: request.user.email });
+            if (!student) return reply.status(404).send({ message: 'Student profile not found' });
+
+            const notifications = await notificationService.getMany({ student: student._id });
+            return reply.send(notifications);
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
+        }
+    }
+
+    async markNotificationRead(request, reply) {
+        try {
+            const { id } = request.params;
+            await notificationService.markAsRead(id);
+            return reply.send({ message: 'Notification marked as read' });
+        } catch (err) {
+            return reply.status(400).send({ message: err.message });
         }
     }
 }

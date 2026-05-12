@@ -19,12 +19,14 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.6.1",
     "@fastify/swagger-ui": "^5.2.4",
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.2",
     "fastify-plugin": "^5.1.0",
     "fluent-json-schema": "^6.0.0",
     "mongoose": "^8.21.0",
+    "node-cron": "^4.2.1",
     "pino-pretty": "^13.1.3"
   }
 }

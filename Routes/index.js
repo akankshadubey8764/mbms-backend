@@ -19,5 +19,9 @@ module.exports = function (fastify, options, done) {
         require('./queryRoutes'),
         { prefix: '/api/v1/queries' }
     );
+    fastify.register(
+        require('./chatRoutes'),
+        { prefix: '/api/v1/chat' }
+    );
     done();
 };
