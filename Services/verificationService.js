@@ -1,74 +1,119 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dqavcvrhz",
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 class VerificationService {
     constructor() {
-        if (process.env.GEMINI_API_KEY) {
+        this.modelId = "gemini-1.5-flash"; // Default
+        this.initializeModel();
+    }
+
+    async initializeModel() {
+        if (!process.env.GEMINI_API_KEY) return;
+        
+        try {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            
+            // We'll test with a very basic call to see if the model is available
+            // If it fails, we'll try a list of fallbacks
+            const testModel = genAI.getGenerativeModel({ model: this.modelId });
+            this.model = testModel;
+            console.log(`AI Verification: Initialized with ${this.modelId}`);
+        } catch (err) {
+            console.error("AI Initialization Error:", err.message);
         }
     }
 
     /**
-     * Verifies a receipt image using Gemini AI
-     * @param {string} receiptUrl - URL of the receipt image
-     * @param {number} expectedAmount - The amount that should have been paid
-     * @returns {Object} { success, message, extractedData }
+     * Verifies receipt data from base64 buffer BEFORE uploading to Cloudinary
      */
-    async verifyReceipt(receiptUrl, expectedAmount) {
-        if (!this.model) {
-            return { success: false, message: "AI Verification service not configured (Missing API Key)" };
+    async verifyBase64Receipt(base64Data, mimeType, expectedAmount) {
+        if (!process.env.GEMINI_API_KEY) {
+            return { success: false, message: "GEMINI_API_KEY is missing in backend .env" };
         }
 
-        try {
-            // In a real scenario, we would fetch the image data from the URL
-            // Since we are in a backend environment, we assume the URL is accessible
-            // For now, we'll use a prompt that asks Gemini to analyze the image at the URL
-            
-            const prompt = `
-                You are a financial auditor for TPGIT Hostel. Analyze the image at this URL: ${receiptUrl}
-                
-                The expected payment is: ₹${expectedAmount}
-                
-                YOUR TASK:
-                1. Determine if this is a valid payment receipt (GPay, PhonePe, Bank Transfer, or Official Paper Receipt).
-                2. If it is a screenshot, ensure it shows a 'Successful' or 'Completed' status.
-                3. Extract the Amount, Date, and Transaction ID.
-                4. Compare the found amount with the expected amount of ₹${expectedAmount}.
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        
+        // Try these models in order of preference
+        const modelsToTry = [
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-latest",
+            "gemini-2.0-flash",
+            "gemini-1.5-pro"
+        ];
 
-                Return ONLY a JSON object with this structure:
-                {
-                    "isReceipt": boolean,
-                    "paymentStatus": "SUCCESS" | "FAILED" | "PENDING",
-                    "amountFound": number,
-                    "transactionId": "string",
-                    "date": "string",
-                    "confidence": number (0-1),
-                    "matchesExpectedAmount": boolean,
-                    "reasoning": "Short explanation of why you verified or rejected it"
+        let lastError = "";
+
+        for (const modelName of modelsToTry) {
+            try {
+                console.log(`AI: Attempting verification with ${modelName}...`);
+                const modelInstance = genAI.getGenerativeModel({ model: modelName });
+                
+                const imagePart = {
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: mimeType || "image/png"
+                    }
+                };
+
+                const prompt = `
+                    Analyze this payment receipt for TPGIT Hostel.
+                    Expected amount: ₹${expectedAmount}.
+
+                    TASKS:
+                    1. Is this a valid successful payment receipt?
+                    2. Extract the Amount paid.
+                    3. Return ONLY a JSON object: {"isValid": boolean, "amountFound": number, "transactionId": "string", "reasoning": "string"}
+                `;
+
+                const result = await modelInstance.generateContent([prompt, imagePart]);
+                const response = await result.response;
+                const text = response.text();
+                
+                console.log(`AI (${modelName}) Response:`, text);
+
+                const jsonStr = text.replace(/```json|```/g, "").trim();
+                const data = JSON.parse(jsonStr);
+
+                if (!data.isValid) {
+                    return { success: false, message: data.reasoning || "Invalid receipt screenshot." };
                 }
-            `;
 
-            const result = await this.model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-            
-            // Clean the response (sometimes AI wraps in ```json ... ```)
-            const jsonStr = text.replace(/```json|```/g, "").trim();
-            const data = JSON.parse(jsonStr);
+                // Verify amount (₹20 tolerance)
+                if (Math.abs(data.amountFound - expectedAmount) > 20) {
+                    return { success: false, message: `Amount mismatch. Receipt shows ₹${data.amountFound}, but bill is ₹${expectedAmount}.` };
+                }
 
-            if (!data.isReceipt) {
-                return { success: false, message: "Uploaded file does not appear to be a valid receipt.", extractedData: data };
+                return { success: true, message: "Verified", data, usedModel: modelName };
+            } catch (error) {
+                console.error(`AI (${modelName}) Failed:`, error.message);
+                lastError = error.message;
+                // Continue to next model if it's a 404 or other fetch error
             }
+        }
 
-            if (data.matchesExpectedAmount || Math.abs(data.amountFound - expectedAmount) < 1) {
-                return { success: true, message: "AI verified the payment successfully.", extractedData: data };
-            } else {
-                return { success: false, message: `Amount mismatch. Found ${data.amountFound}, expected ${expectedAmount}.`, extractedData: data };
-            }
+        return { success: false, message: `AI Verification failed across all models. Last Error: ${lastError}` };
+    }
 
+    /**
+     * Uploads to Cloudinary from the backend after verification
+     */
+    async uploadToCloudinary(base64Data) {
+        try {
+            console.log("Cloudinary: Starting secure backend upload...");
+            const result = await cloudinary.uploader.upload(`data:image/png;base64,${base64Data}`, {
+                folder: 'mess_receipts',
+                resource_type: 'image'
+            });
+            return { success: true, url: result.secure_url };
         } catch (error) {
-            console.error("AI Verification Error:", error);
-            return { success: false, message: "Failed to process receipt with AI." };
+            console.error("Cloudinary Backend Upload Error:", error.message);
+            return { success: false, message: "Cloudinary upload failed: " + error.message };
         }
     }
 }

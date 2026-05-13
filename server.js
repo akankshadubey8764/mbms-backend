@@ -1,5 +1,8 @@
 require('dotenv').config();
-const fastify = require('fastify')({ logger: { transport: { target: 'pino-pretty' } } });
+const fastify = require('fastify')({ 
+  logger: { transport: { target: 'pino-pretty' } },
+  bodyLimit: 10485760 // 10MB limit for receipt uploads
+});
 const mongoose = require('mongoose');
 
 // Initialize Cron Jobs

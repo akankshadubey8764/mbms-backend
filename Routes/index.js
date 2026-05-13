@@ -23,5 +23,9 @@ module.exports = function (fastify, options, done) {
         require('./chatRoutes'),
         { prefix: '/api/v1/chat' }
     );
+    fastify.register(
+        require('./automationRoutes'),
+        { prefix: '/api/v1/automation' }
+    );
     done();
 };

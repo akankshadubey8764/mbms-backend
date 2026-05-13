@@ -90,32 +90,60 @@ class StudentController {
 
     async uploadPaymentProof(request, reply) {
         try {
-            const { month, year, receiptUrl } = request.body;
+            const { month, year, base64Data, mimeType } = request.body;
             const email = request.user.email;
 
             const student = await studentService.getOne({ email });
             if (!student) return reply.status(404).send({ message: 'Student not found' });
 
             const billIndex = student.messBills.findIndex(b => b.month === month && b.year === year);
-            if (billIndex === -1) return reply.status(404).send({ message: 'Bill not found for specified month/year' });
+            if (billIndex === -1) return reply.status(404).send({ message: 'Bill not found' });
 
+            const bill = student.messBills[billIndex];
+            
+            // 1. AI VERIFICATION FIRST
+            console.log(`Smart Check: AI Verifying image before upload for ${email}...`);
+            const verification = await verificationService.verifyBase64Receipt(base64Data, mimeType, bill.amountIssued);
+
+            if (!verification.success) {
+                return reply.status(400).send({ 
+                    message: verification.message,
+                    details: verification.data 
+                });
+            }
+
+            // 2. ONLY IF VERIFIED, UPLOAD TO CLOUDINARY
+            console.log("AI Verified! Now uploading to Cloudinary...");
+            const upload = await verificationService.uploadToCloudinary(base64Data);
+
+            if (!upload.success) {
+                return reply.status(500).send({ message: 'Verification passed, but failed to save image to cloud.' });
+            }
+
+            // 3. UPDATE DATABASE
             const updatedBills = [...student.messBills];
-            updatedBills[billIndex].receiptUrl = receiptUrl;
-            updatedBills[billIndex].paymentStatus = 'PARTIAL';
-            updatedBills[billIndex].isVerified = false;
+            updatedBills[billIndex].receiptUrl = upload.url;
+            updatedBills[billIndex].paymentStatus = 'PAID'; // Since AI verified it!
+            updatedBills[billIndex].isVerified = true;
             updatedBills[billIndex].receiptUploadedAt = new Date();
+            updatedBills[billIndex].verificationData = verification.data;
 
             await studentService.updateOne({ email }, { messBills: updatedBills });
 
-            // Trigger AI Verification in the background (Async)
-            this.runAutoVerification(email, month, year, updatedBills[billIndex].amountIssued, receiptUrl);
+            // 4. NOTIFY STUDENT
+            await notificationService.create({
+                student: student._id,
+                message: `Success! Your payment for ${month}/${year} has been verified and processed automatically.`,
+                type: 'PAYMENT_VERIFIED'
+            });
 
             return reply.send({ 
-                message: 'Payment receipt uploaded successfully. AI verification is in progress.', 
+                message: 'Payment verified and uploaded successfully!', 
                 bill: updatedBills[billIndex] 
             });
         } catch (err) {
-            return reply.status(400).send({ message: err.message });
+            console.error("Upload/Verify Error:", err);
+            return reply.status(500).send({ message: err.message });
         }
     }
 
@@ -250,6 +278,15 @@ class StudentController {
     }
 }
 
-module.exports = new StudentController();
+// Create an instance and bind all methods to ensure 'this' context is preserved
+const controller = new StudentController();
+const proto = StudentController.prototype;
+Object.getOwnPropertyNames(proto).forEach(key => {
+    if (key !== 'constructor' && typeof proto[key] === 'function') {
+        controller[key] = controller[key].bind(controller);
+    }
+});
+
+module.exports = controller;
 
 
