@@ -18,7 +18,7 @@ async function messOpsRoutes(fastify, options) {
         schema: {
             body: S.object()
                 .prop('week', S.string().required())
-                .prop('menuItems', S.object().required().additionalProperties(true))
+                .prop('menuItems', S.array().items(S.object().additionalProperties(true)).required())
         },
         handler: messOpsController.updateMenu
     });

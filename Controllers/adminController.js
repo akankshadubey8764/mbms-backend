@@ -437,6 +437,34 @@ class AdminController {
         }
     }
 
+    async getQueriesCount(request, reply) {
+        try {
+            const { startDate, endDate } = request.query;
+            const criteria = {};
+            if (startDate || endDate) {
+                criteria.createdAt = {};
+                if (startDate) criteria.createdAt.$gte = new Date(startDate);
+                if (endDate) criteria.createdAt.$lte = new Date(endDate);
+            }
+
+            const [total, openCount, resolved, overdue] = await Promise.all([
+                queryService.count(criteria),
+                queryService.count({ ...criteria, status: 'Open' }),
+                queryService.count({ ...criteria, status: 'Resolved' }),
+                queryService.count({ ...criteria, status: 'Overdue' })
+            ]);
+
+            return reply.send({
+                total,
+                pending: openCount,
+                resolved,
+                overdue
+            });
+        } catch (err) {
+            return reply.status(500).send({ message: err.message });
+        }
+    }
+
     async resolveQuery(request, reply) {
         try {
             const { id } = request.params;

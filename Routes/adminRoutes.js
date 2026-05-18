@@ -195,6 +195,14 @@ async function adminRoutes(fastify, options) {
         handler: adminController.getAllQueries
     });
 
+    // 28b. Fetches query counts
+    fastify.route({
+        method: 'GET',
+        url: '/queries/counts',
+        preHandler: adminOnly,
+        handler: adminController.getQueriesCount
+    });
+
     // 29. Mark query as resolved
     fastify.route({
         method: 'PUT',
